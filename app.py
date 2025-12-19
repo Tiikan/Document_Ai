@@ -51,7 +51,7 @@ st.markdown("""
         
         /* Header styling */
         h1 {
-            background: linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 100%);
+            background: linear-gradient(135deg, #00d2ff 0%, #7c3aed 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 700;
