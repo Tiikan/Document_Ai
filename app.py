@@ -51,7 +51,7 @@ st.markdown("""
         
         /* Header styling */
         h1 {
-            background: linear-gradient(135deg, #00d2ff 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #FFFFFF 0%, #7c3aed 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 700;
@@ -165,7 +165,7 @@ def main():
     # Header
     col1, col2 = st.columns([3, 1])
     with col1:
-        st.title("📄 Document AI Assistant")
+        st.title("📄 Document AI Assistant", anchor="main-title")
         st.markdown("**Upload • Analyze • Summarize • Convert**")
     
     st.markdown("---")
