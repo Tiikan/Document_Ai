@@ -17,7 +17,7 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
     
     # AI Settings
-    AI_MODEL = 'gpt-4o-mini'
+    AI_MODEL = 'gpt-4.1-nano'
     MAX_TOKENS = 1000
     TEMPERATURE = 0.7
     

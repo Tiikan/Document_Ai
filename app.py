@@ -2,7 +2,9 @@ import streamlit as st
 import os
 from pathlib import Path
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+import uuid
+import glob
 
 from config import Config
 from utils.document_processor import DocumentProcessor
@@ -143,14 +145,61 @@ def initialize_session_state():
         st.session_state.summary = None
     if 'document_info' not in st.session_state:
         st.session_state.document_info = None
+    # Add unique session ID for file isolation
+    if 'session_id' not in st.session_state:
+        st.session_state.session_id = str(uuid.uuid4())[:8]
+    # Track uploaded files for cleanup
+    if 'uploaded_files' not in st.session_state:
+        st.session_state.uploaded_files = []
+
+
+def cleanup_old_files(max_age_hours: int = 24):
+    """
+    Clean up temporary files older than specified hours.
+    This prevents disk space from filling up with old uploads.
+    """
+    try:
+        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
+        
+        # Clean upload folder
+        for folder in [Config.UPLOAD_FOLDER, Config.OUTPUT_FOLDER]:
+            if os.path.exists(folder):
+                for file_path in glob.glob(os.path.join(folder, '*')):
+                    if os.path.isfile(file_path):
+                        file_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+                        if file_modified < cutoff_time:
+                            try:
+                                os.remove(file_path)
+                            except Exception:
+                                pass  # Ignore errors for files in use
+    except Exception:
+        pass  # Don't crash app if cleanup fails
 
 
 def save_uploaded_file(uploaded_file):
-    """Save uploaded file to disk"""
+    """
+    Save uploaded file to disk with unique naming to support multiple users.
+    Uses session ID and UUID to prevent file collisions.
+    """
     try:
-        file_path = os.path.join(Config.UPLOAD_FOLDER, uploaded_file.name)
+        # Generate unique filename using session ID and UUID
+        session_id = st.session_state.get('session_id', str(uuid.uuid4())[:8])
+        unique_id = str(uuid.uuid4())[:8]
+        
+        # Parse original filename
+        original_name = uploaded_file.name
+        name_parts = os.path.splitext(original_name)
+        
+        # Create unique filename: originalname_sessionid_uniqueid.extension
+        unique_filename = f"{name_parts[0]}_{session_id}_{unique_id}{name_parts[1]}"
+        
+        file_path = os.path.join(Config.UPLOAD_FOLDER, unique_filename)
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
+        
+        # Track file for potential cleanup
+        st.session_state.uploaded_files.append(file_path)
+        
         return file_path
     except Exception as e:
         st.error(f"Error saving file: {str(e)}")
@@ -159,6 +208,9 @@ def save_uploaded_file(uploaded_file):
 
 def main():
     initialize_session_state()
+    
+    # Clean up old temporary files (runs once per session)
+    cleanup_old_files(max_age_hours=24)
     
     # Header
     col1, col2 = st.columns([3, 1])
@@ -395,8 +447,14 @@ def main():
             
             if st.button("🔄 Convert to DOCX", type="primary", use_container_width=True):
                 with st.spinner("Converting PDF to DOCX..."):
-                    output_filename = f"converted_{Path(pdf_file.name).stem}.docx"
+                    # Use unique filename for output to prevent collisions
+                    session_id = st.session_state.get('session_id', str(uuid.uuid4())[:8])
+                    unique_id = str(uuid.uuid4())[:8]
+                    output_filename = f"converted_{Path(pdf_file.name).stem}_{session_id}_{unique_id}.docx"
                     output_path = os.path.join(Config.OUTPUT_FOLDER, output_filename)
+                    
+                    # Track output file for cleanup
+                    st.session_state.uploaded_files.append(output_path)
                     
                     result = DocumentProcessor.convert_pdf_to_docx(pdf_path, output_path)
                     
